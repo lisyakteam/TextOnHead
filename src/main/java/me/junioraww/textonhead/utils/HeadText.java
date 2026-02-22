@@ -76,4 +76,8 @@ public class HeadText {
       }
     }, 1L, 1L, TimeUnit.SECONDS);
   }
+
+  public static Lines getPlayerLines(Player player) {
+    return players.get(player.getUniqueId());
+  }
 }

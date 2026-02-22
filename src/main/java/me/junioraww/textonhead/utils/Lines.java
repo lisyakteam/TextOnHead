@@ -1,102 +1,126 @@
 package me.junioraww.textonhead.utils;
 
 import com.mojang.math.Transformation;
-import net.minecraft.core.BlockPos;
+import me.junioraww.textonhead.Main;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
-import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
-import org.bukkit.Location;
-import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
-import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
 
 public class Lines {
-  private Stats stats = new Stats();
-  private List<Component> messages = new ArrayList<>();
-  private Packet[] spawnPackets;
-  private Packet[] removePackets;
-  private List<Player> watchers = new ArrayList<>();
-  private int entityId;
+  private final Display.TextDisplay statsDisplay;
+  private final Deque<Display.TextDisplay> activeMessages = new ConcurrentLinkedDeque<>();
+
+  private final Map<Integer, List<Packet<?>>> spawnPackets = new HashMap<>();
+  private final Map<Integer, Packet<?>> removePackets = new HashMap<>();
+  private final List<Player> watchers = new ArrayList<>();
+
+  private final float STEP = 0.25f;
 
   public Lines(Player player) {
-    Location center = player.getLocation();
-    ServerLevel nmsWorld = ((CraftWorld) player.getWorld()).getHandle();
-    ServerPlayer nmsPlayer = ((CraftPlayer) player).getHandle();
-    BlockPos blockPos = new BlockPos(center.getBlockX(), center.getBlockY(), center.getBlockZ());
-
-    Display.TextDisplay display = EntityType.TEXT_DISPLAY.create(
-            nmsWorld,
-            null,
-            blockPos,
-            EntitySpawnReason.COMMAND,
-            false,
-            false
-    );
-
-    display.startRiding(nmsPlayer, true, false);
-    display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
-    display.setText(Component.literal("Hello world!"));
-    display.setTransformation(new Transformation(new Matrix4f().translation(0.0f, 0.2f, 0.0f)));
-
-    var spawnPacket = new ClientboundAddEntityPacket(
-            display.getId(),
-            UUID.randomUUID(),
-            display.getX(),
-            display.getY(),
-            display.getZ(),
-            0f,
-            0f,
-            display.getType(),
-            0,
-            display.getDeltaMovement(),
-            0.0
-    );
-    var dirtyData = display.getEntityData().packDirty();
-    if (dirtyData == null) throw new RuntimeException("data is null");
-
-    var ridePacket = new ClientboundSetPassengersPacket(nmsPlayer);
-    var dataPacket = new ClientboundSetEntityDataPacket(display.getId(), dirtyData);
-    var remPacket = new ClientboundRemoveEntitiesPacket(display.getId());
-
-    spawnPackets = new Packet[] {
-            spawnPacket,
-            dataPacket,
-            ridePacket
-    };
-
-    removePackets = new Packet[] {
-            remPacket
-    };
-  }
-
-  public void sendPackets(Player player, boolean remove) {
-    var client = ((CraftPlayer) player).getHandle().connection;
-    if (!remove) for (var packet : spawnPackets) client.send(packet);
-    else for (var packet : removePackets) client.send(packet);
+    this.statsDisplay = Displays.createDisplay(player, Stats.getLine(player), 0);
+    registerDisplay(statsDisplay, player);
   }
 
   public List<Player> getWatchers() {
     return watchers;
   }
 
-  public Stats getStats() {
-    return stats;
+  private void registerDisplay(Display.TextDisplay display, Player player) {
+    spawnPackets.put(display.getId(), Displays.getEntityPackets(display, player));
+    removePackets.put(display.getId(), Displays.getRemovePacket(display));
   }
 
-  public List<Component> getMessages() {
-    return messages;
+  private Component createColoredComponent(String text) {
+    return Component.literal(ChatColor.translateAlternateColorCodes('&', text));
+  }
+
+  public void addMessage(Player player, String text) {
+    Component component = createColoredComponent(text);
+    Display.TextDisplay newMessage = Displays.createDisplay(player, component, 1);
+
+    activeMessages.addFirst(newMessage);
+    registerDisplay(newMessage, player);
+    sendSpawnPackets(newMessage);
+
+    updateAllPositions();
+
+    Bukkit.getAsyncScheduler().runDelayed(Main.getPlugin(), task -> {
+      removeMessage(newMessage);
+    }, 3, TimeUnit.SECONDS);
+  }
+
+  public void removeMessage(Display.TextDisplay display) {
+    if (activeMessages.remove(display)) {
+      Packet<?> removePacket = Displays.getRemovePacket(display);
+      broadcastPacket(removePacket);
+
+      spawnPackets.remove(display.getId());
+      removePackets.remove(display.getId());
+
+      updateAllPositions();
+    }
+  }
+
+  private void updateAllPositions() {
+    int i = 1;
+    for (Display.TextDisplay display : activeMessages) {
+      updateDisplayHeight(display, i);
+      i++;
+    }
+  }
+
+  private void updateDisplayHeight(Display.TextDisplay display, int index) {
+    Transformation transformation = new Transformation(
+            new Vector3f(0, (1 + index) * STEP, 0),
+            null, null, null
+    );
+
+    display.setTransformation(transformation);
+    display.setTransformationInterpolationDuration(5);
+    display.setTransformationInterpolationDelay(0);
+
+    ClientboundSetEntityDataPacket packet = new ClientboundSetEntityDataPacket(
+            display.getId(),
+            display.getEntityData().getNonDefaultValues()
+    );
+    broadcastPacket(packet);
+  }
+
+  private void sendSpawnPackets(Display.TextDisplay display) {
+    List<Packet<?>> packets = spawnPackets.get(display.getId());
+    if (packets == null) return;
+    for (Player watcher : watchers) {
+      var client = ((CraftPlayer) watcher).getHandle().connection;
+      packets.forEach(client::send);
+    }
+  }
+
+  private void broadcastPacket(Packet<?> packet) {
+    for (Player watcher : watchers) {
+      if (watcher.isOnline()) {
+        ((CraftPlayer) watcher).getHandle().connection.send(packet);
+      }
+    }
+  }
+
+  public void sendPackets(Player player, boolean remove) {
+    var client = ((CraftPlayer) player).getHandle().connection;
+    if (!remove) {
+      spawnPackets.values().forEach(list -> list.forEach(client::send));
+      if (!watchers.contains(player)) watchers.add(player);
+    } else {
+      removePackets.values().forEach(client::send);
+      watchers.remove(player);
+    }
   }
 }
