@@ -18,10 +18,13 @@ public final class Main extends JavaPlugin {
     getServer().getPluginManager().registerEvents(new PlayerEvents(), this);
     getServer().getPluginManager().registerEvents(new ChatEvents(), this);
     HeadText.start();
+    getServer().getOnlinePlayers().forEach(HeadText::initPlayer);
+    getServer().getOnlinePlayers().forEach(PlayerEvents::init);
   }
 
   @Override
   public void onDisable() {
     plugin = null;
+    getServer().getOnlinePlayers().forEach(HeadText::removePlayer);
   }
 }

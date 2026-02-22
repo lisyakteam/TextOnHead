@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.joml.Vector3f;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 
@@ -20,9 +21,9 @@ public class Lines {
   private final Display.TextDisplay statsDisplay;
   private final Deque<Display.TextDisplay> activeMessages = new ConcurrentLinkedDeque<>();
 
-  private final Map<Integer, List<Packet<?>>> spawnPackets = new HashMap<>();
-  private final Map<Integer, Packet<?>> removePackets = new HashMap<>();
-  private final List<Player> watchers = new ArrayList<>();
+  private final Map<Integer, List<Packet<?>>> spawnPackets = new ConcurrentHashMap<>();
+  private final Map<Integer, Packet<?>> removePackets = new ConcurrentHashMap<>();
+  private final Set<Player> watchers = ConcurrentHashMap.newKeySet();
 
   private final float STEP = 0.25f;
 
@@ -31,7 +32,7 @@ public class Lines {
     registerDisplay(statsDisplay, player);
   }
 
-  public List<Player> getWatchers() {
+  public Set<Player> getWatchers() {
     return watchers;
   }
 
@@ -48,6 +49,9 @@ public class Lines {
     Component component = createColoredComponent(text);
     Display.TextDisplay newMessage = Displays.createDisplay(player, component, 1);
 
+    if (text.length() > 25 && !activeMessages.isEmpty())
+      removeMessage(activeMessages.getLast());
+
     activeMessages.addFirst(newMessage);
     registerDisplay(newMessage, player);
     sendSpawnPackets(newMessage);
@@ -56,7 +60,7 @@ public class Lines {
 
     Bukkit.getAsyncScheduler().runDelayed(Main.getPlugin(), task -> {
       removeMessage(newMessage);
-    }, 3, TimeUnit.SECONDS);
+    }, 3 + text.length() / 25, TimeUnit.SECONDS);
   }
 
   public void removeMessage(Display.TextDisplay display) {

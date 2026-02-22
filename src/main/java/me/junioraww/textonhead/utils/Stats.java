@@ -18,7 +18,7 @@ public class Stats {
       int level = wallet.getLevel();
       return Component
               .literal(player.getName())
-              .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xBBBBBB)))
+              .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFFFFFF)))
               .append(Component
                       .literal(" [" + level + "☆]")
                       .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFFD700)))

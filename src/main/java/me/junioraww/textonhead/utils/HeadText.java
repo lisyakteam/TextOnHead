@@ -2,8 +2,11 @@ package me.junioraww.textonhead.utils;
 
 import me.junioraww.textonhead.Main;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffectType;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,21 +63,32 @@ public class HeadText {
         Lines lines = players.get(player.getUniqueId());
         if (lines == null) continue;
 
-        var nearby = player.getWorld().getPlayersSeeingChunk(player.getChunk());
+        Collection<Player> nearby = player.getWorld().getPlayersSeeingChunk(player.getChunk());
 
         for (Player other : nearby) {
-          if (other.equals(player) || lines.getWatchers().contains(other)) continue;
+          if (!shouldSee(other, player, nearby)) continue;
+          if (lines.getWatchers().contains(other)) continue;
+
           lines.sendPackets(other, false);
           lines.getWatchers().add(other);
         }
 
         lines.getWatchers().removeIf(other -> {
-          if (other.equals(player) || nearby.contains(other)) return false;
+          if (shouldSee(other, player, nearby)) return false;
+
           lines.sendPackets(other, true);
           return true;
         });
       }
     }, 1L, 1L, TimeUnit.SECONDS);
+  }
+
+  private static boolean shouldSee(Player other, Player player, Collection<Player> nearby) {
+    return !other.equals(player)
+            && other.canSee(player)
+            && nearby.contains(other)
+            && !player.getGameMode().equals(GameMode.SPECTATOR)
+            && !player.hasPotionEffect(PotionEffectType.INVISIBILITY);
   }
 
   public static Lines getPlayerLines(Player player) {

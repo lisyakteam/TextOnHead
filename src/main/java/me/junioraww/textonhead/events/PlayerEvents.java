@@ -9,11 +9,27 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.scoreboard.Team;
 
 public class PlayerEvents implements Listener {
+
+
   @EventHandler
   public void playerJoined(PlayerJoinEvent event) {
-    HeadText.initPlayer(event.getPlayer());
+    Player player = event.getPlayer();
+    HeadText.initPlayer(player);
+    init(player);
+  }
+
+  public static void init(Player player) {
+    var scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+    var team = scoreboard.getTeam("hideTag");
+    if (team == null) {
+      team = scoreboard.registerNewTeam("hideTag");
+      team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
+    }
+
+    team.addPlayer(player);
   }
 
   @EventHandler
@@ -37,11 +53,24 @@ public class PlayerEvents implements Listener {
 
   @EventHandler
   public void playerTeleport(PlayerTeleportEvent event) {
-    HeadText.recreate(event.getPlayer());
+    Bukkit.getScheduler().runTaskLater(Main.getPlugin(), () -> {
+      HeadText.recreate(event.getPlayer());
+    }, 2L);
+  }
+
+  @EventHandler
+  public void playerVanished(PlayerShowEntityEvent event) {
+    if (event.getEntity() instanceof Player other && other.equals(event.getPlayer())) {
+      Bukkit.getScheduler().runTaskLater(Main.getPlugin(), () -> {
+        HeadText.recreate(event.getPlayer());
+      }, 2L);
+    }
   }
 
   @EventHandler
   public void playerChangedDimension(PlayerChangedWorldEvent event) {
-    HeadText.recreate(event.getPlayer());
+    Bukkit.getScheduler().runTaskLater(Main.getPlugin(), () -> {
+      HeadText.recreate(event.getPlayer());
+    }, 2L);
   }
 }
