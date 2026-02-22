@@ -2,3 +2,5 @@ name: TextOnHead
 version: '1.0'
 main: me.junioraww.textonhead.Main
 api-version: '1.21'
+softdepend:
+  [ Tails ]
