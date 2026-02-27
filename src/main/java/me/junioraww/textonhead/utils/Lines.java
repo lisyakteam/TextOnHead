@@ -3,6 +3,7 @@ package me.junioraww.textonhead.utils;
 import com.mojang.math.Transformation;
 import me.junioraww.textonhead.Main;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.BundlePacket;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.world.entity.Display;
@@ -21,7 +22,7 @@ public class Lines {
   private final Display.TextDisplay statsDisplay;
   private final Deque<Display.TextDisplay> activeMessages = new ConcurrentLinkedDeque<>();
 
-  private final Map<Integer, List<Packet<?>>> spawnPackets = new ConcurrentHashMap<>();
+  private final Map<Integer, BundlePacket<?>> spawnPackets = new ConcurrentHashMap<>();
   private final Map<Integer, Packet<?>> removePackets = new ConcurrentHashMap<>();
   private final Set<Player> watchers = ConcurrentHashMap.newKeySet();
 
@@ -101,11 +102,11 @@ public class Lines {
   }
 
   private void sendSpawnPackets(Display.TextDisplay display) {
-    List<Packet<?>> packets = spawnPackets.get(display.getId());
+    BundlePacket<?> packets = spawnPackets.get(display.getId());
     if (packets == null) return;
     for (Player watcher : watchers) {
       var client = ((CraftPlayer) watcher).getHandle().connection;
-      packets.forEach(client::send);
+      client.send(packets);
     }
   }
 
@@ -120,7 +121,7 @@ public class Lines {
   public void sendPackets(Player player, boolean remove) {
     var client = ((CraftPlayer) player).getHandle().connection;
     if (!remove) {
-      spawnPackets.values().forEach(list -> list.forEach(client::send));
+      spawnPackets.values().forEach(client::send);
       if (!watchers.contains(player)) watchers.add(player);
     } else {
       removePackets.values().forEach(client::send);

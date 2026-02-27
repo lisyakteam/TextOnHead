@@ -3,11 +3,9 @@ package me.junioraww.textonhead.utils;
 import com.mojang.math.Transformation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.BundlePacket;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
-import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
@@ -71,7 +69,7 @@ public class Displays {
     );
   }
 
-  public static List<Packet<?>> getEntityPackets(Display display, Player player) {
+  public static BundlePacket<?> getEntityPackets(Display display, Player player) {
     ServerPlayer nmsPlayer = ((CraftPlayer) player).getHandle();
     var dirtyData = display.getEntityData().packDirty();
 
@@ -81,10 +79,12 @@ public class Displays {
     var dataPacket = new ClientboundSetEntityDataPacket(display.getId(), dirtyData);
     var ridePacket = new ClientboundSetPassengersPacket(nmsPlayer);
 
-    return List.of(
-            spawnPacket,
-            dataPacket,
-            ridePacket
+    return new ClientboundBundlePacket(
+            List.of(
+              spawnPacket,
+              dataPacket,
+              ridePacket
+            )
     );
   }
 

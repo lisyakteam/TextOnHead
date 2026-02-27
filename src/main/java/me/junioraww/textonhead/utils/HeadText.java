@@ -80,11 +80,12 @@ public class HeadText {
           return true;
         });
       }
-    }, 1L, 1L, TimeUnit.SECONDS);
+    }, 500L, 500L, TimeUnit.MILLISECONDS);
   }
 
   private static boolean shouldSee(Player other, Player player, Collection<Player> nearby) {
-    return !other.equals(player)
+    return other.isOnline()
+            && player.isOnline()
             && other.canSee(player)
             && nearby.contains(other)
             && !player.getGameMode().equals(GameMode.SPECTATOR)
