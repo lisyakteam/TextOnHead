@@ -40,6 +40,8 @@ public class Lines {
   private void registerDisplay(Display.TextDisplay display, Player player) {
     spawnPackets.put(display.getId(), Displays.getEntityPackets(display, player));
     removePackets.put(display.getId(), Displays.getRemovePacket(display));
+
+    PassengerRegistry.register(player.getEntityId(), display.getId());
   }
 
   private Component createColoredComponent(String text) {
@@ -51,7 +53,7 @@ public class Lines {
     Display.TextDisplay newMessage = Displays.createDisplay(player, component, 1);
 
     if (text.length() > 25 && !activeMessages.isEmpty())
-      removeMessage(activeMessages.getLast());
+      removeMessage(activeMessages.getLast(), player.getEntityId());
 
     activeMessages.addFirst(newMessage);
     registerDisplay(newMessage, player);
@@ -60,17 +62,19 @@ public class Lines {
     updateAllPositions();
 
     Bukkit.getAsyncScheduler().runDelayed(Main.getPlugin(), task -> {
-      removeMessage(newMessage);
+      removeMessage(newMessage, player.getEntityId());
     }, 3 + text.length() / 25, TimeUnit.SECONDS);
   }
 
-  public void removeMessage(Display.TextDisplay display) {
+  public void removeMessage(Display.TextDisplay display, int playerId) {
     if (activeMessages.remove(display)) {
       Packet<?> removePacket = Displays.getRemovePacket(display);
       broadcastPacket(removePacket);
 
       spawnPackets.remove(display.getId());
       removePackets.remove(display.getId());
+
+      PassengerRegistry.unregister(playerId, display.getId());
 
       updateAllPositions();
     }

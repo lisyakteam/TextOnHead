@@ -21,6 +21,8 @@ public class HeadText {
       players.put(player.getUniqueId(), lines);
     }
 
+    PacketInterceptor.inject(player);
+
     Lines lines = players.get(player.getUniqueId());
     lines.sendPackets(player, false);
     lines.getWatchers().forEach(p -> lines.sendPackets(p, false));
@@ -28,6 +30,8 @@ public class HeadText {
 
   public static void removePlayer(Player player) {
     Lines lines = players.remove(player.getUniqueId());
+
+    PacketInterceptor.uninject(player);
 
     if (lines != null) {
       lines.sendPackets(player, true);
