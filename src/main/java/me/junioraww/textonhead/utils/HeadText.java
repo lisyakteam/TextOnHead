@@ -10,7 +10,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 public class HeadText {
   private static final Map<UUID, Lines> players = new ConcurrentHashMap<>();
@@ -56,8 +55,7 @@ public class HeadText {
   public static void start() {
     Main plugin = Main.getPlugin();
 
-    plugin.getServer().getAsyncScheduler().runAtFixedRate(plugin, task -> {
-
+    plugin.getServer().getScheduler().runTaskTimer(plugin, task -> {
       players.entrySet().removeIf(entry -> {
         Player p = Bukkit.getPlayer(entry.getKey());
         return p == null || !p.isOnline();
@@ -84,7 +82,7 @@ public class HeadText {
           return true;
         });
       }
-    }, 500L, 500L, TimeUnit.MILLISECONDS);
+    }, 10L, 10L);
   }
 
   private static boolean shouldSee(Player other, Player player, Collection<Player> nearby) {
