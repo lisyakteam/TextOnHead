@@ -61,9 +61,9 @@ public class Lines {
 
     updateAllPositions();
 
-    Bukkit.getAsyncScheduler().runDelayed(Main.getPlugin(), task -> {
+    Bukkit.getScheduler().runTaskLater(Main.getPlugin(), task -> {
       removeMessage(newMessage, player.getEntityId());
-    }, 3 + text.length() / 25, TimeUnit.SECONDS);
+    }, (3 + text.length() / 25) * 20);
   }
 
   public void removeMessage(Display.TextDisplay display, int playerId) {

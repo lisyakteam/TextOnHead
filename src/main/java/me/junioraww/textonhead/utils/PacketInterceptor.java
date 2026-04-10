@@ -31,7 +31,7 @@ public class PacketInterceptor {
     channel.pipeline().addBefore("packet_handler", "text_on_head_handler", new ChannelOutboundHandlerAdapter() {
       @Override
       public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-        if (msg instanceof ClientboundSetPassengersPacket packet) {
+        /*if (msg instanceof ClientboundSetPassengersPacket packet) {
           int vehicleId = packet.getVehicle();
 
           Set<Integer> extraIds = PassengerRegistry.getForEntityId(vehicleId);
@@ -48,7 +48,7 @@ public class PacketInterceptor {
             }
             passengersField.set(packet, updated);
           }
-        }
+        }*/
         super.write(ctx, msg, promise);
       }
     });

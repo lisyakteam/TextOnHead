@@ -34,7 +34,7 @@ public class Displays {
 
   public static BlockPos blockPos(Player player) {
     Location center = player.getLocation();
-    return new BlockPos(center.getBlockX(), center.getBlockY(), center.getBlockZ());
+    return new BlockPos(center.getBlockX(), center.getBlockY() + 2, center.getBlockZ());
   }
 
   public static Display.TextDisplay createDisplay(
